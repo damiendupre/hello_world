@@ -1,0 +1,142 @@
+---
+title: "Unraveling the Dynamics"
+subtitle: "Exploring the Interplay between Population Growth, Life Expectancy, and GDP Fluctuations since 1952"
+author: "Damien Dupre"
+date: "2024-03-26"
+format:
+  html: 
+    theme: sandstone
+    backgroundcolor: lightgrey
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+This report embarks on a journey to decipher the complex relationships between demographic changes, health outcomes, and economic fluctuations over the past seven decades. Through rigorous analysis of *Gapminder data*, this study seeks to answer the central research question: **How have population growth, life expectancy, and GDP fluctuations intersected and influenced each other since 1952?**
+
+By delving into this inquiry, the report aims to shed light on the underlying mechanisms driving societal development, thereby providing valuable insights for policymakers, researchers, and stakeholders navigating the challenges of contemporary global dynamics.
+
+```{r}
+#| label: setup
+#| include: false
+
+# libraries
+library(tidyverse)
+library(plotly)
+
+# data
+data_left <- read_csv("data_left.csv")
+data_right_1 <- read_csv("data_right_1.csv")
+data_right_2 <- read_csv("data_right_2.csv")
+data_right_3 <- read_csv("data_right_3.csv")
+
+data_join <- data_left %>%
+  full_join(data_right_1) %>%
+  full_join(data_right_2, by = c("country" = "location", "year" = "date")) %>%
+  full_join(data_right_3)
+```
+
+## Snapshoot of the World in 1952
+
+```{r}
+#| fig-cap: "This detailed map provides a snapshot of life expectancy across the globe in 1952, showcasing significant disparities between developed and developing nations. It highlights the influence of socio-economic factors on health outcomes and underscores the need for targeted interventions to address inequalities."
+
+map_world <- map_data("world") 
+
+gap_1952 <- data_join %>% 
+  filter(year == 1952)
+
+map_gap_1952 <- full_join(gap_1952, map_world, by = c("country" = "region"))
+
+ggplot(map_gap_1952) +
+  aes(x = long, y = lat, group = group, fill = lifeExp) +
+  geom_polygon() +
+  scale_fill_gradient(low = "yellow", high = "red", na.value = "grey") +
+  labs(
+    title = "Differences between countries regarding their average Life Expectancy in 1952",
+    subtitle = "Countries in grey have no data due to a mismatch with their names",
+    caption = "Source: R package {gapminder}",
+    x = "Longitude",
+    y = "Latitude",
+    fill = "Life Expectancy"
+  ) +
+  theme_bw()
+```
+
+Intriguingly, this snapshot reveals stark divergences in life expectancy between developed and developing nations, with industrialized regions typically boasting higher life expectancies compared to their counterparts in the Global South. Countries in Europe and North America, buoyed by advancements in healthcare, sanitation, and nutrition, often exhibited longer life spans, underscoring the influence of socio-economic development on health outcomes.
+
+## Significant Evolution
+
+```{r}
+timeseries_plot <- ggplot(data_join) +
+  aes(year, lifeExp, group = country, color = continent) +
+  geom_line() +
+  labs(
+    title = "Differences between countries regarding their average Life Expectancy since 1952 by continent",
+    caption = "Source: R package {gapminder}",
+    x = "Year",
+    y = "Life Expectancy",
+    color = "Continent"
+  ) +
+  theme_bw()
+
+ggplotly(timeseries_plot)
+```
+
+Analyzing the data reveals notable turning points and trends. Initial years may showcase modest gains, reflective of early advancements in healthcare and sanitation. However, as the decades progress, accelerated improvements become evident, driven by breakthroughs:
+
+- in medical science, 
+- improved access to healthcare, 
+- and socioeconomic development.
+
+```{r}
+#| fig-cap: "This comprehensive visualization tracks the trajectory of global well-being over nearly seven decades, encapsulating shifts, patterns, and significant milestones in life expectancy worldwide. Beginning in 1952, the chart unveils a remarkable journey of human advancement, characterized by steady increases in life expectancy across diverse regions."
+
+ggplot(data_join) +
+  aes(gdpPercap, lifeExp, color = continent, size = pop) +
+  geom_point(alpha = 0.2) +
+  facet_wrap(~ year, nrow = 1) +
+  scale_x_continuous(
+    labels = scales::unit_format(unit = "K", scale = 1e-3),
+    limits = c(0, 50000),
+    breaks = c(20000, 40000)
+  ) + 
+  labs(
+    x = "GDP per Capita in USD",
+    y = "Life Expectancy",
+    title = "Evolution of the relationship between life expectancy and GDP from 1952 to 2007 per continent."
+  ) +
+  theme_classic() +
+  theme(text = element_text(family = "serif")) +
+  guides(color = "none", size = "none")
+```
+
+```{r}
+#| fig-cap: "Overall, this chart offers a compelling narrative of human progress and resilience, charting the collective journey towards longer, healthier lives on a global scale. It serves as a powerful tool for policymakers, researchers, and advocates, informing evidence-based strategies to address persistent disparities and safeguard public health in an ever-changing world."
+
+data_join %>%
+  group_by(continent, year) %>%
+  summarise(m_lifeexp = mean(lifeExp, na.rm = TRUE)) %>%
+  ggplot(aes(reorder(continent, m_lifeexp), m_lifeexp, fill = continent)) +
+  geom_col() +
+  facet_wrap(~ year, nrow = 1) +
+  scale_fill_manual(values = c("#9933FF", "#33FFFF", "red", "darkblue", "chartreuse3")) +
+  labs(
+    x = "",
+    y = "Average Life Expectancy",
+    fill = "Continent",
+    title = "Evolution of the average life expectancy per continent from 1952 to 2007 per continent."
+  ) +
+  theme_classic() +
+  theme(
+    text = element_text(family = "serif"),
+    axis.text.x = element_blank()
+  )
+```
+
+## Conclusions and Recommendations
+
+Crucially, the chart illuminates the impact of major public health initiatives and interventions. Events such as the global eradication of smallpox, advancements in vaccination programs, and the implementation of policies targeting maternal and child health contribute to pronounced spikes in life expectancy during specific periods.
+
+
